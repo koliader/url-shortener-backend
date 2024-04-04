@@ -13,7 +13,7 @@ func createRandomUrl(t *testing.T, user User) Url {
 	arg := CreateUrlParams{
 		Url:   util.RandomUrl(),
 		Code:  util.RandomString(5),
-		Owner: user.Email,
+		Owner: &user.Email,
 	}
 	url, err := testStore.CreateUrl(context.Background(), arg)
 	require.NoError(t, err)
@@ -42,17 +42,17 @@ func TestGetUrlByCode(t *testing.T) {
 	require.Equal(t, url1.Url, url2.Url)
 }
 
-func TestListUrlsBuUser(t *testing.T) {
+func TestListUrlsByUser(t *testing.T) {
 	user := createRandomUser(t)
 	for i := 0; i < 5; i++ {
 		createRandomUrl(t, user)
 	}
 
-	urls, err := testStore.ListUrlsByUser(context.Background(), user.Email)
+	urls, err := testStore.ListUrlsByUser(context.Background(), &user.Email)
 	require.NoError(t, err)
 	require.NotEmpty(t, urls)
 
 	for _, url := range urls {
-		require.Equal(t, url.Owner, user.Email)
+		require.Equal(t, *url.Owner, user.Email)
 	}
 }

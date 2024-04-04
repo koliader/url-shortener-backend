@@ -47,11 +47,17 @@ func (s *Server) setupRouter() {
 	})
 
 	router.Use(c)
-	// authRoutes := router.Group("/").Use(authMiddleware(s.tokenMaker))
+	authRoutes := router.Group("/").Use(authMiddleware(s.tokenMaker, s.store))
 
 	// auth
 	router.POST("/auth/register", s.registerUser)
 	router.POST("/auth/login", s.loginUser)
+
+	// urls
+	router.POST("/urls/guest", s.createGuestUrl)
+	router.GET("/urls/:code", s.getUrlByCode)
+	authRoutes.POST("/urls", s.createUrl)
+	authRoutes.GET("/urls/myUrls", s.listUrlsByOwner)
 
 	s.router = router
 }

@@ -15,3 +15,9 @@ LIMIT 1;
 -- name: ListUrlsByUser :many
 SELECT * FROM urls
 WHERE owner = $1;
+
+-- name: UpdateUrl :one
+UPDATE urls
+SET url = $2
+WHERE code = $1
+RETURNING *;

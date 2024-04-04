@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
+	db "github.com/koliadervyanko/url-shortener-backend.git/db/sqlc"
 	"github.com/koliadervyanko/url-shortener-backend.git/token"
 )
 
@@ -22,7 +24,7 @@ const (
 	tokenErr                = "токен для несуществующего пользователя"
 )
 
-func authMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
+func authMiddleware(tokenMaker token.Maker, store db.Store) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authHeader := ctx.GetHeader(authHeaderKey)
 		if len(authHeader) == 0 {
@@ -46,6 +48,15 @@ func authMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
 		payload, err := tokenMaker.VerifyToken(accessToken)
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(err))
+			return
+		}
+		_, err = store.GetUserByEmail(ctx, payload.Email)
+		if err != nil {
+			if err == pgx.ErrNoRows {
+				ctx.AbortWithStatusJSON(http.StatusNotFound, errorResponse(fmt.Errorf("token for non-existent user")))
+				return
+			}
+			ctx.AbortWithStatusJSON(http.StatusInternalServerError, errorResponse(err))
 			return
 		}
 		ctx.Set(authorizationPayloadKey, payload)
