@@ -1,6 +1,7 @@
 CREATE TABLE "users" (
   "username" varchar UNIQUE NOT NULL,
-  "email" varchar UNIQUE NOT NULL
+  "email" varchar UNIQUE NOT NULL,
+  "password" varchar NOT NULL
 );
 
 CREATE TABLE "urls" (
