@@ -45,14 +45,27 @@ func (q *Queries) GetUrlByCode(ctx context.Context, code string) (Url, error) {
 	return i, err
 }
 
-const listUrlsByUser = `-- name: ListUrlsByUser :one
+const listUrlsByUser = `-- name: ListUrlsByUser :many
 SELECT url, code, owner FROM urls
 WHERE owner = $1
 `
 
-func (q *Queries) ListUrlsByUser(ctx context.Context, owner string) (Url, error) {
-	row := q.db.QueryRow(ctx, listUrlsByUser, owner)
-	var i Url
-	err := row.Scan(&i.Url, &i.Code, &i.Owner)
-	return i, err
+func (q *Queries) ListUrlsByUser(ctx context.Context, owner string) ([]Url, error) {
+	rows, err := q.db.Query(ctx, listUrlsByUser, owner)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Url{}
+	for rows.Next() {
+		var i Url
+		if err := rows.Scan(&i.Url, &i.Code, &i.Owner); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
