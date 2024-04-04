@@ -8,8 +8,8 @@ import (
 
 type Payload struct {
 	Email     string    `json:"email"`
-	IssuedAt  time.Time `json:"issued_at"`
-	ExpiredAt time.Time `json:"expired_at"`
+	IssuedAt  time.Time `json:"issuedAt"`
+	ExpiredAt time.Time `json:"expiredAt"`
 }
 
 func NewPayload(email string, username string, duration time.Duration) (*Payload, error) {
