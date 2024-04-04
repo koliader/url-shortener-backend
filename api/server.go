@@ -58,6 +58,7 @@ func (s *Server) setupRouter() {
 	router.GET("/urls/:code", s.getUrlByCode)
 	authRoutes.POST("/urls", s.createUrl)
 	authRoutes.GET("/urls/myUrls", s.listUrlsByOwner)
+	authRoutes.PUT("/urls/:code", s.updateUrl)
 
 	s.router = router
 }

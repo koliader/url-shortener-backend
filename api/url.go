@@ -146,3 +146,57 @@ func (s *Server) listUrlsByOwner(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, converted)
 }
+
+type updateUrlUriReq struct {
+	Code string `uri:"code" binding:"required"`
+}
+type updateUrlJsonReq struct {
+	Url string `json:"url" binding:"required,http_url"`
+}
+
+func (s *Server) updateUrl(ctx *gin.Context) {
+	var uriReq updateUrlUriReq
+	var jsonReq updateUrlJsonReq
+	if err := ctx.ShouldBindUri(&uriReq); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+	if err := ctx.ShouldBindJSON(&jsonReq); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	url, err := s.store.GetUrlByCode(ctx, uriReq.Code)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			ctx.JSON(http.StatusNotFound, errorResponse(fmt.Errorf("url not found")))
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+	owner, err := s.store.GetUserByEmail(ctx, *url.Owner)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			ctx.JSON(http.StatusNotFound, errorResponse(fmt.Errorf("owner of url not found")))
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+	if owner.Email != authPayload.Email {
+		ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("you can't edit url of another user")))
+		return
+	}
+	arg := db.UpdateUrlParams{
+		Code: url.Code,
+		Url:  jsonReq.Url,
+	}
+	_, err = s.store.UpdateUrl(ctx, arg)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+	ctx.JSON(http.StatusOK, Success{true})
+}
