@@ -7,12 +7,13 @@ package db
 import ()
 
 type Url struct {
-	Url   string `json:"url"`
-	Code  string `json:"code"`
-	Owner string `json:"owner"`
+	Url   string  `json:"url"`
+	Code  string  `json:"code"`
+	Owner *string `json:"owner"`
 }
 
 type User struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
+	Password string `json:"password"`
 }

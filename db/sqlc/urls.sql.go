@@ -20,9 +20,9 @@ INSERT INTO urls (
 `
 
 type CreateUrlParams struct {
-	Url   string `json:"url"`
-	Code  string `json:"code"`
-	Owner string `json:"owner"`
+	Url   string  `json:"url"`
+	Code  string  `json:"code"`
+	Owner *string `json:"owner"`
 }
 
 func (q *Queries) CreateUrl(ctx context.Context, arg CreateUrlParams) (Url, error) {
@@ -45,13 +45,45 @@ func (q *Queries) GetUrlByCode(ctx context.Context, code string) (Url, error) {
 	return i, err
 }
 
-const listUrlsByUser = `-- name: ListUrlsByUser :one
+const listUrlsByUser = `-- name: ListUrlsByUser :many
 SELECT url, code, owner FROM urls
 WHERE owner = $1
 `
 
-func (q *Queries) ListUrlsByUser(ctx context.Context, owner string) (Url, error) {
-	row := q.db.QueryRow(ctx, listUrlsByUser, owner)
+func (q *Queries) ListUrlsByUser(ctx context.Context, owner *string) ([]Url, error) {
+	rows, err := q.db.Query(ctx, listUrlsByUser, owner)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Url{}
+	for rows.Next() {
+		var i Url
+		if err := rows.Scan(&i.Url, &i.Code, &i.Owner); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateUrl = `-- name: UpdateUrl :one
+UPDATE urls
+SET url = $2
+WHERE code = $1
+RETURNING url, code, owner
+`
+
+type UpdateUrlParams struct {
+	Code string `json:"code"`
+	Url  string `json:"url"`
+}
+
+func (q *Queries) UpdateUrl(ctx context.Context, arg UpdateUrlParams) (Url, error) {
+	row := q.db.QueryRow(ctx, updateUrl, arg.Code, arg.Url)
 	var i Url
 	err := row.Scan(&i.Url, &i.Code, &i.Owner)
 	return i, err
