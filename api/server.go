@@ -9,21 +9,37 @@ import (
 	db "github.com/koliadervyanko/url-shortener-backend.git/db/sqlc"
 	"github.com/koliadervyanko/url-shortener-backend.git/token"
 	"github.com/koliadervyanko/url-shortener-backend.git/util"
+	"golang.org/x/oauth2"
 )
 
 type Server struct {
-	config     util.Config
-	store      db.Store
-	router     *gin.Engine
-	tokenMaker token.Maker
+	config      util.Config
+	store       db.Store
+	router      *gin.Engine
+	tokenMaker  token.Maker
+	oauthConfig oauth2.Config
 }
+
+var (
+	githubScopes = []string{"user:email"}
+)
 
 func NewServer(config util.Config, store db.Store) (*Server, error) {
 	tokenMaker, err := token.NewJWTMaker(config.TokenKey)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create tokenManager: %v", err)
 	}
-	server := &Server{store: store, config: config, tokenMaker: tokenMaker}
+	oauthConfig := oauth2.Config{
+		ClientID:     config.GithubClientId,
+		ClientSecret: config.GithubClientSecret,
+		Endpoint: oauth2.Endpoint{
+			TokenURL: "https://github.com/login/oauth/access_token",
+		},
+		RedirectURL: "http://localhost:3000/auth/github/callback",
+		Scopes:      githubScopes,
+	}
+
+	server := &Server{store: store, config: config, tokenMaker: tokenMaker, oauthConfig: oauthConfig}
 
 	server.setupRouter()
 
@@ -52,6 +68,7 @@ func (s *Server) setupRouter() {
 	// auth
 	router.POST("/auth/register", s.registerUser)
 	router.POST("/auth/login", s.loginUser)
+	router.GET("/auth/github/:code", s.githubAuth)
 
 	// urls
 	router.POST("/urls/guest", s.createGuestUrl)
@@ -61,7 +78,7 @@ func (s *Server) setupRouter() {
 	authRoutes.GET("/urls/myUrls", s.listUrlsByOwner)
 
 	// users
-	authRoutes.GET("/users/:email", s.getUserByEmail)
+	authRoutes.GET("/users/:username", s.getUserByUsername)
 
 	s.router = router
 }

@@ -12,6 +12,8 @@ type Config struct {
 	ServerAddress       string        `mapstructure:"SERVER_ADDRESS"`
 	TokenKey            string        `mapstructure:"TOKEN_KEY"`
 	AccessTokenDuration time.Duration `mapstructure:"ACCESS_TOKEN_DURATION"`
+	GithubClientId      string        `mapstructure:"GITHUB_CLIENT_ID"`
+	GithubClientSecret  string        `mapstructure:"GITHUB_CLIENT_SECRET"`
 }
 
 func LoadConfig(path string) (config Config, err error) {

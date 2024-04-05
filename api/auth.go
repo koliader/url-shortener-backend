@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -12,8 +13,9 @@ import (
 
 const authError = "incorrect login or password"
 
+var emptyUser db.User = db.User{}
+
 type registerUserReq struct {
-	Email    string `json:"email" binding:"required,email"`
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
@@ -34,20 +36,35 @@ func (s *Server) registerUser(ctx *gin.Context) {
 	}
 	arg := db.CreateUserParams{
 		Username: req.Username,
-		Email:    req.Email,
-		Password: hashedPassword,
+		Password: &hashedPassword,
 		Color:    util.RandomColor(),
 	}
+	dbUser, _ := s.store.GetUserByUsername(ctx, arg.Username)
+
+	if dbUser != emptyUser && dbUser.Password == nil {
+		jwtToken, err := s.tokenMaker.CreateToken(dbUser.Username, s.config.AccessTokenDuration)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			return
+		}
+		res := authRes{
+			Token: jwtToken,
+		}
+		ctx.JSON(http.StatusOK, res)
+		return
+	}
 	user, err := s.store.CreateUser(ctx, arg)
+	fmt.Println(err)
 	if err != nil {
 		if db.ErrorCode(err) == db.ErrUniqueViolation.Code {
-			ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("user with this email or username is created")))
+			ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("user with this username or username is created")))
 			return
 		}
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
-	token, err := s.tokenMaker.CreateToken(user.Email, user.Username, s.config.AccessTokenDuration)
+	fmt.Println(user.Username)
+	token, err := s.tokenMaker.CreateToken(user.Username, s.config.AccessTokenDuration)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
@@ -59,7 +76,7 @@ func (s *Server) registerUser(ctx *gin.Context) {
 }
 
 type loginUserReq struct {
-	Email    string `json:"email" binding:"required,email"`
+	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
 
@@ -69,7 +86,7 @@ func (s *Server) loginUser(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	user, err := s.store.GetUserByEmail(ctx, req.Email)
+	user, err := s.store.GetUserByUsername(ctx, req.Username)
 	if err != nil {
 		fmt.Println(err.Error())
 		fmt.Println(err.Error() == pgx.ErrNoRows.Error())
@@ -80,13 +97,25 @@ func (s *Server) loginUser(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
-	err = util.CheckPassword(user.Password, req.Password)
+	if user != emptyUser && user.Password == nil {
+		jwtToken, err := s.tokenMaker.CreateToken(user.Username, s.config.AccessTokenDuration)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			return
+		}
+		res := authRes{
+			Token: jwtToken,
+		}
+		ctx.JSON(http.StatusOK, res)
+		return
+	}
+	err = util.CheckPassword(*user.Password, req.Password)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, errorResponse(fmt.Errorf(authError)))
 		return
 	}
 
-	token, err := s.tokenMaker.CreateToken(user.Email, user.Username, s.config.AccessTokenDuration)
+	token, err := s.tokenMaker.CreateToken(user.Username, s.config.AccessTokenDuration)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
@@ -96,4 +125,86 @@ func (s *Server) loginUser(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, res)
 
+}
+
+type getGithubAccessTokenReq struct {
+	Code string `uri:"code" binding:"required"`
+}
+type githubUserResponse struct {
+	Login string `json:"login"`
+	ID    int    `json:"id"`
+	Name  string `json:"name"`
+}
+
+func (s *Server) githubAuth(ctx *gin.Context) {
+	var req getGithubAccessTokenReq
+	if err := ctx.ShouldBindUri(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	//* get github token using oauthConfig
+	token, err := s.oauthConfig.Exchange(ctx, req.Code)
+
+	if err != nil {
+		fmt.Println(err)
+		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("failed to exchange token %v", err)))
+		return
+	}
+	httpClient := s.oauthConfig.Client(ctx, token)
+	resp, err := httpClient.Get("https://api.github.com/user")
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("failed to fetch user data")))
+		return
+	}
+	defer resp.Body.Close()
+
+	var user githubUserResponse
+	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("failed to decode user data")))
+		return
+	}
+	fmt.Printf("%+v", user)
+	dbUser, err := s.store.GetUserByUsername(ctx, user.Login)
+	if err != nil {
+		if err.Error() != pgx.ErrNoRows.Error() {
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			return
+
+		}
+		// if err is not not found
+		arg := db.CreateUserParams{
+			Username: user.Login,
+			Password: nil,
+			Color:    util.RandomColor(),
+		}
+		_, err := s.store.CreateUser(ctx, arg)
+		if err != nil {
+			if db.ErrorCode(err) == db.UniqueViolation {
+				ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("user with this data was already created")))
+				return
+			}
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			return
+		}
+		jwtToken, err := s.tokenMaker.CreateToken(dbUser.Username, s.config.AccessTokenDuration)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			return
+		}
+		res := authRes{
+			Token: jwtToken,
+		}
+		ctx.JSON(http.StatusOK, res)
+		return
+	}
+	jwtToken, err := s.tokenMaker.CreateToken(dbUser.Username, s.config.AccessTokenDuration)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+	res := authRes{
+		Token: jwtToken,
+	}
+	ctx.JSON(http.StatusOK, res)
 }

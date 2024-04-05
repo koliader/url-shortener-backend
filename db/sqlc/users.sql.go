@@ -12,58 +12,41 @@ import (
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
   username,
-  email,
   password,
   color
 ) VALUES (
-  $1, $2, $3, $4
-) RETURNING username, email, password, color
+  $1, $2, $3
+) RETURNING username, password, color
 `
 
 type CreateUserParams struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Color    string `json:"color"`
+	Username string  `json:"username"`
+	Password *string `json:"password"`
+	Color    string  `json:"color"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, createUser,
-		arg.Username,
-		arg.Email,
-		arg.Password,
-		arg.Color,
-	)
+	row := q.db.QueryRow(ctx, createUser, arg.Username, arg.Password, arg.Color)
 	var i User
-	err := row.Scan(
-		&i.Username,
-		&i.Email,
-		&i.Password,
-		&i.Color,
-	)
+	err := row.Scan(&i.Username, &i.Password, &i.Color)
 	return i, err
 }
 
-const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT username, email, password, color FROM users
-WHERE email = $1
+const getUserByUsername = `-- name: GetUserByUsername :one
+SELECT username, password, color FROM users
+WHERE username = $1
 LIMIT 1
 `
 
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
-	row := q.db.QueryRow(ctx, getUserByEmail, email)
+func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByUsername, username)
 	var i User
-	err := row.Scan(
-		&i.Username,
-		&i.Email,
-		&i.Password,
-		&i.Color,
-	)
+	err := row.Scan(&i.Username, &i.Password, &i.Color)
 	return i, err
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT username, email, password, color FROM users
+SELECT username, password, color FROM users
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
@@ -75,12 +58,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 	items := []User{}
 	for rows.Next() {
 		var i User
-		if err := rows.Scan(
-			&i.Username,
-			&i.Email,
-			&i.Password,
-			&i.Color,
-		); err != nil {
+		if err := rows.Scan(&i.Username, &i.Password, &i.Color); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

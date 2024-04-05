@@ -21,7 +21,7 @@ type convertedUrl struct {
 func (s *Server) convertUrl(ctx *gin.Context, url db.Url) (*convertedUrl, error) {
 	var convertedUser *convertedUser
 	if url.Owner != nil {
-		user, err := s.store.GetUserByEmail(ctx, *url.Owner)
+		user, err := s.store.GetUserByUsername(ctx, *url.Owner)
 		if err != nil {
 			return nil, err
 		}
@@ -71,7 +71,7 @@ func (s *Server) createUrl(ctx *gin.Context) {
 	arg := db.CreateUrlParams{
 		Url:   req.Url,
 		Code:  util.RandomString(5),
-		Owner: &authPayload.Email,
+		Owner: &authPayload.Username,
 	}
 	url, err := s.store.CreateUrl(ctx, arg)
 	if err != nil {
@@ -124,7 +124,7 @@ func (s *Server) getUrlByCode(ctx *gin.Context) {
 func (s *Server) listUrlsByOwner(ctx *gin.Context) {
 	var converted []convertedUrl
 	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
-	urls, err := s.store.ListUrlsByUser(ctx, &authPayload.Email)
+	urls, err := s.store.ListUrlsByUser(ctx, &authPayload.Username)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			ctx.JSON(http.StatusNotFound, errorResponse(fmt.Errorf("user not found")))
