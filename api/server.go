@@ -35,8 +35,7 @@ func NewServer(config util.Config, store db.Store) (*Server, error) {
 		Endpoint: oauth2.Endpoint{
 			TokenURL: "https://github.com/login/oauth/access_token",
 		},
-		RedirectURL: "http://localhost:3000/auth/github/callback",
-		Scopes:      githubScopes,
+		Scopes: githubScopes,
 	}
 
 	server := &Server{store: store, config: config, tokenMaker: tokenMaker, oauthConfig: oauthConfig}
