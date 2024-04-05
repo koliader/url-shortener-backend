@@ -12,23 +12,13 @@ import (
 
 const authError = "неправильный логин или пароль"
 
-type convertedUser struct {
-	Email    string `json:"email" binding:"required,email"`
-	Username string `json:"username" binding:"required"`
-}
-
-func (s *Server) convertUser(user db.User) convertedUser {
-	converted := convertedUser{
-		Email:    user.Email,
-		Username: user.Username,
-	}
-	return converted
-}
-
 type registerUserReq struct {
 	Email    string `json:"email" binding:"required,email"`
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
+}
+type authRes struct {
+	Token string `json:"token" binding:"required"`
 }
 
 func (s *Server) registerUser(ctx *gin.Context) {
@@ -46,6 +36,7 @@ func (s *Server) registerUser(ctx *gin.Context) {
 		Username: req.Username,
 		Email:    req.Email,
 		Password: hashedPassword,
+		Color:    util.RandomColor(),
 	}
 	user, err := s.store.CreateUser(ctx, arg)
 	if err != nil {
@@ -56,16 +47,20 @@ func (s *Server) registerUser(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
-	ctx.JSON(http.StatusOK, s.convertUser(user))
+	token, err := s.tokenMaker.CreateToken(user.Email, user.Username, s.config.AccessTokenDuration)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+	res := authRes{
+		Token: token,
+	}
+	ctx.JSON(http.StatusOK, res)
 }
 
 type loginUserReq struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`
-}
-
-type loginUserRes struct {
-	Token string `json:"token" binding:"required"`
 }
 
 func (s *Server) loginUser(ctx *gin.Context) {
@@ -94,7 +89,7 @@ func (s *Server) loginUser(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
-	res := loginUserRes{
+	res := authRes{
 		Token: token,
 	}
 	ctx.JSON(http.StatusOK, res)

@@ -60,6 +60,9 @@ func (s *Server) setupRouter() {
 	authRoutes.GET("/urls/myUrls", s.listUrlsByOwner)
 	authRoutes.PUT("/urls/:code", s.updateUrl)
 
+	// users
+	authRoutes.GET("/users/:email", s.getUserByEmail)
+
 	s.router = router
 }
 
