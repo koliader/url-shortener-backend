@@ -7,14 +7,14 @@ import (
 )
 
 type Payload struct {
-	Email     string    `json:"email"`
+	Username  string    `json:"username"`
 	IssuedAt  time.Time `json:"issuedAt"`
 	ExpiredAt time.Time `json:"expiredAt"`
 }
 
-func NewPayload(email string, username string, duration time.Duration) (*Payload, error) {
+func NewPayload(username string, duration time.Duration) (*Payload, error) {
 	payload := &Payload{
-		Email:     email,
+		Username:  username,
 		IssuedAt:  time.Now(),
 		ExpiredAt: time.Now().Add(duration),
 	}

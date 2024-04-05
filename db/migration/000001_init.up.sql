@@ -1,7 +1,6 @@
 CREATE TABLE "users" (
   "username" varchar UNIQUE NOT NULL,
-  "email" varchar UNIQUE NOT NULL,
-  "password" varchar NOT NULL,
+  "password" varchar ,
   "color" varchar NOT NULL
 );
 
@@ -12,4 +11,4 @@ CREATE TABLE "urls" (
   "clicks" integer NOT NULL DEFAULT (0)
 );
 
-ALTER TABLE "urls" ADD FOREIGN KEY ("owner") REFERENCES "users" ("email");
+ALTER TABLE "urls" ADD FOREIGN KEY ("owner") REFERENCES "users" ("username");

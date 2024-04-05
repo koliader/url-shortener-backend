@@ -12,31 +12,29 @@ import (
 const userNotFound = "user not found"
 
 type convertedUser struct {
-	Email    string `json:"email" binding:"required,email"`
 	Username string `json:"username" binding:"required"`
 	Color    string `json:"color" binding:"required"`
 }
 
 func (s *Server) convertUser(user db.User) convertedUser {
 	converted := convertedUser{
-		Email:    user.Email,
 		Username: user.Username,
 		Color:    user.Color,
 	}
 	return converted
 }
 
-type getUserByEmailReq struct {
-	Email string `uri:"email" binding:"required,email"`
+type getUserByUsernameReq struct {
+	Username string `uri:"username" binding:"required"`
 }
 
-func (s *Server) getUserByEmail(ctx *gin.Context) {
-	var req getUserByEmailReq
+func (s *Server) getUserByUsername(ctx *gin.Context) {
+	var req getUserByUsernameReq
 	if err := ctx.ShouldBindUri(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	user, err := s.store.GetUserByEmail(ctx, req.Email)
+	user, err := s.store.GetUserByUsername(ctx, req.Username)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			ctx.JSON(http.StatusNotFound, errorResponse(fmt.Errorf(userNotFound)))

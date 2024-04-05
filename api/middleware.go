@@ -50,7 +50,7 @@ func authMiddleware(tokenMaker token.Maker, store db.Store) gin.HandlerFunc {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(err))
 			return
 		}
-		_, err = store.GetUserByEmail(ctx, payload.Email)
+		_, err = store.GetUserByUsername(ctx, payload.Username)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				ctx.AbortWithStatusJSON(http.StatusNotFound, errorResponse(fmt.Errorf("token for non-existent user")))
