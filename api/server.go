@@ -35,7 +35,8 @@ func NewServer(config util.Config, store db.Store) (*Server, error) {
 		Endpoint: oauth2.Endpoint{
 			TokenURL: "https://github.com/login/oauth/access_token",
 		},
-		Scopes: githubScopes,
+		Scopes:      githubScopes,
+		RedirectURL: "https://url-shortener-frontend-git-main-koliadervyankos-projects.vercel.app/",
 	}
 
 	server := &Server{store: store, config: config, tokenMaker: tokenMaker, oauthConfig: oauthConfig}
