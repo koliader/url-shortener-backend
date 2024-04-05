@@ -8,7 +8,8 @@ CREATE TABLE "users" (
 CREATE TABLE "urls" (
   "url" varchar NOT NULL,
   "code" varchar UNIQUE NOT NULL,
-  "owner" varchar
+  "owner" varchar,
+  "clicks" integer NOT NULL DEFAULT (0)
 );
 
 ALTER TABLE "urls" ADD FOREIGN KEY ("owner") REFERENCES "users" ("email");

@@ -10,7 +10,7 @@ import (
 	"github.com/koliadervyanko/url-shortener-backend.git/util"
 )
 
-const authError = "неправильный логин или пароль"
+const authError = "incorrect login or password"
 
 type registerUserReq struct {
 	Email    string `json:"email" binding:"required,email"`
@@ -71,7 +71,9 @@ func (s *Server) loginUser(ctx *gin.Context) {
 	}
 	user, err := s.store.GetUserByEmail(ctx, req.Email)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		fmt.Println(err.Error())
+		fmt.Println(err.Error() == pgx.ErrNoRows.Error())
+		if err.Error() == pgx.ErrNoRows.Error() {
 			ctx.JSON(http.StatusNotFound, errorResponse(fmt.Errorf(authError)))
 			return
 		}

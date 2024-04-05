@@ -7,9 +7,10 @@ package db
 import ()
 
 type Url struct {
-	Url   string  `json:"url"`
-	Code  string  `json:"code"`
-	Owner *string `json:"owner"`
+	Url    string  `json:"url"`
+	Code   string  `json:"code"`
+	Owner  *string `json:"owner"`
+	Clicks int32   `json:"clicks"`
 }
 
 type User struct {
