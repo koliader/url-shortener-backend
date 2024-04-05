@@ -13,27 +13,39 @@ const createUser = `-- name: CreateUser :one
 INSERT INTO users (
   username,
   email,
-  password
+  password,
+  color
 ) VALUES (
-  $1, $2, $3
-) RETURNING username, email, password
+  $1, $2, $3, $4
+) RETURNING username, email, password, color
 `
 
 type CreateUserParams struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
+	Color    string `json:"color"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, createUser, arg.Username, arg.Email, arg.Password)
+	row := q.db.QueryRow(ctx, createUser,
+		arg.Username,
+		arg.Email,
+		arg.Password,
+		arg.Color,
+	)
 	var i User
-	err := row.Scan(&i.Username, &i.Email, &i.Password)
+	err := row.Scan(
+		&i.Username,
+		&i.Email,
+		&i.Password,
+		&i.Color,
+	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT username, email, password FROM users
+SELECT username, email, password, color FROM users
 WHERE email = $1
 LIMIT 1
 `
@@ -41,12 +53,17 @@ LIMIT 1
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
 	row := q.db.QueryRow(ctx, getUserByEmail, email)
 	var i User
-	err := row.Scan(&i.Username, &i.Email, &i.Password)
+	err := row.Scan(
+		&i.Username,
+		&i.Email,
+		&i.Password,
+		&i.Color,
+	)
 	return i, err
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT username, email, password FROM users
+SELECT username, email, password, color FROM users
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
@@ -58,7 +75,12 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 	items := []User{}
 	for rows.Next() {
 		var i User
-		if err := rows.Scan(&i.Username, &i.Email, &i.Password); err != nil {
+		if err := rows.Scan(
+			&i.Username,
+			&i.Email,
+			&i.Password,
+			&i.Color,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -17,6 +17,7 @@ func createRandomUser(t *testing.T) User {
 		Username: util.RandomString(5),
 		Email:    util.RandomEmail(),
 		Password: hashedPassword,
+		Color:    util.RandomColor(),
 	}
 	user, err := testStore.CreateUser(context.Background(), arg)
 	require.NoError(t, err)

@@ -16,8 +16,8 @@ LIMIT 1;
 SELECT * FROM urls
 WHERE owner = $1;
 
--- name: UpdateUrl :one
+-- name: UpdateClicks :one
 UPDATE urls
-SET url = $2
+SET clicks = clicks + 1
 WHERE code = $1
 RETURNING *;

@@ -56,9 +56,12 @@ func (s *Server) setupRouter() {
 	// urls
 	router.POST("/urls/guest", s.createGuestUrl)
 	router.GET("/urls/:code", s.getUrlByCode)
+	router.PUT("/urls/:code", s.updateClicks)
 	authRoutes.POST("/urls", s.createUrl)
 	authRoutes.GET("/urls/myUrls", s.listUrlsByOwner)
-	authRoutes.PUT("/urls/:code", s.updateUrl)
+
+	// users
+	authRoutes.GET("/users/:email", s.getUserByEmail)
 
 	s.router = router
 }

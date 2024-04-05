@@ -57,18 +57,16 @@ func TestListUrlsByUser(t *testing.T) {
 	}
 }
 
-func TestUpdateUrl(t *testing.T) {
+func TestUpdateClicks(t *testing.T) {
 	user := createRandomUser(t)
 	url1 := createRandomUrl(t, user)
-	arg := UpdateUrlParams{
-		Code: url1.Code,
-		Url:  util.RandomUrl(),
-	}
-	url2, err := testStore.UpdateUrl(context.Background(), arg)
+
+	url2, err := testStore.UpdateClicks(context.Background(), url1.Code)
 	require.NoError(t, err)
 	require.NotEmpty(t, url2)
 
 	require.Equal(t, url1.Code, url2.Code)
 	require.Equal(t, url1.Owner, url2.Owner)
-	require.Equal(t, arg.Url, url2.Url)
+	require.Equal(t, url1.Url, url2.Url)
+	require.Equal(t, url1.Clicks, url2.Clicks-1)
 }

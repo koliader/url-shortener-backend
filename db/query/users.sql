@@ -2,9 +2,10 @@
 INSERT INTO users (
   username,
   email,
-  password
+  password,
+  color
 ) VALUES (
-  $1, $2, $3
+  $1, $2, $3, $4
 ) RETURNING *;
 
 -- name: GetUserByEmail :one

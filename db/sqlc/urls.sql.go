@@ -16,7 +16,7 @@ INSERT INTO urls (
   owner
 ) VALUES (
   $1, $2, $3
-) RETURNING url, code, owner
+) RETURNING url, code, owner, clicks
 `
 
 type CreateUrlParams struct {
@@ -28,12 +28,17 @@ type CreateUrlParams struct {
 func (q *Queries) CreateUrl(ctx context.Context, arg CreateUrlParams) (Url, error) {
 	row := q.db.QueryRow(ctx, createUrl, arg.Url, arg.Code, arg.Owner)
 	var i Url
-	err := row.Scan(&i.Url, &i.Code, &i.Owner)
+	err := row.Scan(
+		&i.Url,
+		&i.Code,
+		&i.Owner,
+		&i.Clicks,
+	)
 	return i, err
 }
 
 const getUrlByCode = `-- name: GetUrlByCode :one
-SELECT url, code, owner FROM urls
+SELECT url, code, owner, clicks FROM urls
 WHERE code = $1
 LIMIT 1
 `
@@ -41,12 +46,17 @@ LIMIT 1
 func (q *Queries) GetUrlByCode(ctx context.Context, code string) (Url, error) {
 	row := q.db.QueryRow(ctx, getUrlByCode, code)
 	var i Url
-	err := row.Scan(&i.Url, &i.Code, &i.Owner)
+	err := row.Scan(
+		&i.Url,
+		&i.Code,
+		&i.Owner,
+		&i.Clicks,
+	)
 	return i, err
 }
 
 const listUrlsByUser = `-- name: ListUrlsByUser :many
-SELECT url, code, owner FROM urls
+SELECT url, code, owner, clicks FROM urls
 WHERE owner = $1
 `
 
@@ -59,7 +69,12 @@ func (q *Queries) ListUrlsByUser(ctx context.Context, owner *string) ([]Url, err
 	items := []Url{}
 	for rows.Next() {
 		var i Url
-		if err := rows.Scan(&i.Url, &i.Code, &i.Owner); err != nil {
+		if err := rows.Scan(
+			&i.Url,
+			&i.Code,
+			&i.Owner,
+			&i.Clicks,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -70,21 +85,21 @@ func (q *Queries) ListUrlsByUser(ctx context.Context, owner *string) ([]Url, err
 	return items, nil
 }
 
-const updateUrl = `-- name: UpdateUrl :one
+const updateClicks = `-- name: UpdateClicks :one
 UPDATE urls
-SET url = $2
+SET clicks = clicks + 1
 WHERE code = $1
-RETURNING url, code, owner
+RETURNING url, code, owner, clicks
 `
 
-type UpdateUrlParams struct {
-	Code string `json:"code"`
-	Url  string `json:"url"`
-}
-
-func (q *Queries) UpdateUrl(ctx context.Context, arg UpdateUrlParams) (Url, error) {
-	row := q.db.QueryRow(ctx, updateUrl, arg.Code, arg.Url)
+func (q *Queries) UpdateClicks(ctx context.Context, code string) (Url, error) {
+	row := q.db.QueryRow(ctx, updateClicks, code)
 	var i Url
-	err := row.Scan(&i.Url, &i.Code, &i.Owner)
+	err := row.Scan(
+		&i.Url,
+		&i.Code,
+		&i.Owner,
+		&i.Clicks,
+	)
 	return i, err
 }
