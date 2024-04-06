@@ -39,31 +39,15 @@ func (s *Server) registerUser(ctx *gin.Context) {
 		Password: &hashedPassword,
 		Color:    util.RandomColor(),
 	}
-	dbUser, _ := s.store.GetUserByUsername(ctx, arg.Username)
-
-	if dbUser != emptyUser && dbUser.Password == nil {
-		jwtToken, err := s.tokenMaker.CreateToken(dbUser.Username, s.config.AccessTokenDuration)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-			return
-		}
-		res := authRes{
-			Token: jwtToken,
-		}
-		ctx.JSON(http.StatusOK, res)
-		return
-	}
 	user, err := s.store.CreateUser(ctx, arg)
-	fmt.Println(err)
 	if err != nil {
 		if db.ErrorCode(err) == db.ErrUniqueViolation.Code {
-			ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("user with this username or username is created")))
+			ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("user with this username is created")))
 			return
 		}
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
-	fmt.Println(user.Username)
 	token, err := s.tokenMaker.CreateToken(user.Username, s.config.AccessTokenDuration)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
@@ -77,7 +61,7 @@ func (s *Server) registerUser(ctx *gin.Context) {
 
 type loginUserReq struct {
 	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	Password string `json:"password"`
 }
 
 func (s *Server) loginUser(ctx *gin.Context) {
@@ -88,8 +72,6 @@ func (s *Server) loginUser(ctx *gin.Context) {
 	}
 	user, err := s.store.GetUserByUsername(ctx, req.Username)
 	if err != nil {
-		fmt.Println(err.Error())
-		fmt.Println(err.Error() == pgx.ErrNoRows.Error())
 		if err.Error() == pgx.ErrNoRows.Error() {
 			ctx.JSON(http.StatusNotFound, errorResponse(fmt.Errorf(authError)))
 			return
@@ -97,21 +79,9 @@ func (s *Server) loginUser(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
+	// check if github auth user trying to login with simple auth
 	if user != emptyUser && user.Password == nil {
-		jwtToken, err := s.tokenMaker.CreateToken(user.Username, s.config.AccessTokenDuration)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-			return
-		}
-		res := authRes{
-			Token: jwtToken,
-		}
-		ctx.JSON(http.StatusOK, res)
-		return
-	}
-	err = util.CheckPassword(*user.Password, req.Password)
-	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, errorResponse(fmt.Errorf(authError)))
+		ctx.JSON(http.StatusUnauthorized, errorResponse(fmt.Errorf("login with github")))
 		return
 	}
 
