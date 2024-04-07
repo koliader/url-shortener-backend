@@ -37,6 +37,7 @@ func NewServer(config util.Config, store db.Store) (*Server, error) {
 		},
 		RedirectURL: config.RedirectUrl,
 		Scopes:      githubScopes,
+		RedirectURL: "https://url-shortener-frontend-git-main-koliadervyankos-projects.vercel.app/",
 	}
 
 	server := &Server{store: store, config: config, tokenMaker: tokenMaker, oauthConfig: oauthConfig}
