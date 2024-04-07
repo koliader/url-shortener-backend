@@ -3,6 +3,7 @@ package util
 import (
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
 
@@ -15,6 +16,7 @@ type Config struct {
 	GithubClientId      string        `mapstructure:"GITHUB_CLIENT_ID"`
 	GithubClientSecret  string        `mapstructure:"GITHUB_CLIENT_SECRET"`
 	RedirectUrl         string        `mapstructure:"REDIRECT_URL"`
+	GinMode             string        `mapstructure:"GIN_MODE"`
 }
 
 func LoadConfig(path string) (config Config, err error) {
@@ -28,5 +30,8 @@ func LoadConfig(path string) (config Config, err error) {
 		return
 	}
 	err = viper.Unmarshal(&config)
+	if config.GinMode == "release" {
+		gin.SetMode(gin.ReleaseMode)
+	}
 	return
 }
