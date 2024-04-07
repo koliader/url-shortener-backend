@@ -117,7 +117,6 @@ func (s *Server) githubAuth(ctx *gin.Context) {
 	token, err := s.oauthConfig.Exchange(ctx, req.Code)
 
 	if err != nil {
-		fmt.Println(err)
 		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("failed to exchange token %v", err)))
 		return
 	}
@@ -134,7 +133,6 @@ func (s *Server) githubAuth(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("failed to decode user data")))
 		return
 	}
-	fmt.Printf("%+v", user)
 	dbUser, err := s.store.GetUserByUsername(ctx, user.Login)
 	if err != nil {
 		if err.Error() != pgx.ErrNoRows.Error() {
@@ -142,13 +140,13 @@ func (s *Server) githubAuth(ctx *gin.Context) {
 			return
 
 		}
-		// if err is not not found
+		// if err is equal to not not found
 		arg := db.CreateUserParams{
 			Username: user.Login,
 			Password: nil,
 			Color:    util.RandomColor(),
 		}
-		_, err := s.store.CreateUser(ctx, arg)
+		user, err := s.store.CreateUser(ctx, arg)
 		if err != nil {
 			if db.ErrorCode(err) == db.UniqueViolation {
 				ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("user with this data was already created")))
@@ -157,7 +155,7 @@ func (s *Server) githubAuth(ctx *gin.Context) {
 			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 			return
 		}
-		jwtToken, err := s.tokenMaker.CreateToken(dbUser.Username, s.config.AccessTokenDuration)
+		jwtToken, err := s.tokenMaker.CreateToken(user.Username, s.config.AccessTokenDuration)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 			return
